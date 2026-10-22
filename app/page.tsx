@@ -45,9 +45,12 @@ export default function Home() {
   const [generated, setGenerated] = useState<GeneratedContent | null>(null);
   const [eventData, setEventData] = useState<any>(null);
   const [approvedItems, setApprovedItems] = useState<Set<string>>(new Set());
+  const [showComparison, setShowComparison] = useState(false);
+  const [comparisonData, setComparisonData] = useState<Record<string, any>>({});
 
   const totalManualMinutes = Object.values(MANUAL_MINUTES).reduce((a, b) => a + b, 0);
   const approvedMinutes = Array.from(approvedItems).reduce((sum, item) => sum + (MANUAL_MINUTES[item] || 0), 0);
+  const hasApiKey = false; // Will be set by checking env, for now show mock mode banner
 
   const handleTrySample = async () => {
     setEventInput("AI Builders Meetup: Build Your First AI Workflow");
@@ -63,6 +66,8 @@ export default function Home() {
     setIsGenerating(true);
     setGenerated(null);
     setApprovedItems(new Set());
+    setShowComparison(false);
+    setComparisonData({});
     
     try {
       let eventInfo = {
@@ -129,12 +134,53 @@ export default function Home() {
     setApprovedItems(new Set(Object.keys(MANUAL_MINUTES)));
   };
 
+  const handleCompareVoices = async () => {
+    setShowComparison(true);
+    
+    // Generate for all voice profiles
+    const allData: Record<string, any> = {};
+    
+    for (const profile of voiceProfiles) {
+      try {
+        const response = await fetch("/api/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            eventData: eventData || {
+              name: eventInput,
+              description: "",
+              start_at: new Date().toISOString(),
+            },
+            voiceProfileId: profile.id,
+            notes,
+          }),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          allData[profile.id] = data.content.posts;
+        }
+      } catch (e) {
+        console.error("Failed to generate for profile:", profile.id);
+      }
+    }
+    
+    setComparisonData(allData);
+  };
+
   const imageUrl = eventData?.name 
     ? `/api/image?title=${encodeURIComponent(eventData.name)}&date=${encodeURIComponent(new Date(eventData.start_at || Date.now()).toLocaleDateString())}&venue=${encodeURIComponent(eventData.geo?.address || "")}`
     : `/api/image?title=${encodeURIComponent(eventInput || "Community Event")}`;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+      {/* Mock Mode Banner */}
+      {!hasApiKey && (
+        <div className="bg-primary/10 border-b border-primary/20 py-2 px-4 text-center text-sm">
+          <span className="font-medium">🚀 Demo Mode</span> - Working without API keys! Perfect for testing & demos.
+        </div>
+      )}
+      
       <div className="container mx-auto px-4 py-12 max-w-7xl">
         {/* Hero */}
         {!generated && (
@@ -305,7 +351,7 @@ export default function Home() {
               {/* Hours Saved Banner */}
               <Card className="bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
                 <CardContent className="p-8">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
                       <div className="text-3xl font-bold">{totalManualMinutes} minutes</div>
                       <div className="text-muted-foreground">saved if you approve all</div>
@@ -314,13 +360,52 @@ export default function Home() {
                       <div className="text-2xl font-semibold text-primary">{approvedMinutes} min</div>
                       <div className="text-sm text-muted-foreground">approved so far</div>
                     </div>
-                    <Button onClick={approveAll} size="lg">
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Approve All
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={handleCompareVoices} variant="outline" size="lg">
+                        Compare Voices
+                      </Button>
+                      <Button onClick={approveAll} size="lg">
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Approve All
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Voice Comparison Modal */}
+              {showComparison && Object.keys(comparisonData).length > 0 && (
+                <Card className="bg-card/95 backdrop-blur border-primary/30">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Voice Profile Comparison</CardTitle>
+                        <CardDescription>See how the same event sounds in different community voices</CardDescription>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setShowComparison(false)}>
+                        Close
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {["whatsapp", "linkedin", "discord"].map((platform) => (
+                        <div key={platform} className="space-y-3">
+                          <h4 className="font-semibold capitalize">{platform}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {voiceProfiles.map((profile) => (
+                              <div key={profile.id} className="p-4 rounded-lg border border-border bg-background/50">
+                                <div className="text-xs text-muted-foreground mb-2">{profile.name}</div>
+                                <div className="text-sm">{comparisonData[profile.id]?.[platform] || "Loading..."}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Asset Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
