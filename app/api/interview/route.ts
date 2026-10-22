@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server';
 import { SAMPLE_APPLICANTS, COMMUNITY_RULES, GATEKEEPERS, BLOCKLIST } from '@/lib/config';
+import { conductInterview, isLiveMode } from '@/lib/llm';
 import crypto from 'crypto';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 // Mock interview generator
 function generateMockInterview(applicant: any) {
@@ -280,50 +282,146 @@ function generateMockInterview(applicant: any) {
 export async function POST(request: NextRequest) {
   const { applicantId } = await request.json();
   
-  // Find applicant (check samples first)
+  // Find applicant (check samples first, then passed data)
   let applicant = SAMPLE_APPLICANTS.find(a => a.id === applicantId);
   
   if (!applicant) {
+    // Could be a custom applicant from the form
     return new Response('Applicant not found', { status: 404 });
   }
+
+  const useLiveMode = isLiveMode() && !applicant.isSample; // Use mock for samples to ensure consistency
 
   // Create streaming response
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      // Send initial status update
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({ status: 'interviewing' })}\n\n`));
-      
-      // Simulate delay for realism
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Generate mock interview
-      const result = generateMockInterview(applicant);
-      
-      // Stream transcript entries
-      for (const entry of result.transcript) {
-        await new Promise(resolve => setTimeout(resolve, 800));
+      try {
+        // Send initial status update
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-          transcript: result.transcript.slice(0, result.transcript.indexOf(entry) + 1)
+          status: 'interviewing',
+          mode: useLiveMode ? 'live' : 'mock'
         })}\n\n`));
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        let result;
+        let usedMockFallback = false;
+
+        // Check blocklist first
+        const handleHash = crypto.createHash('sha256')
+          .update(applicant!.handle.toLowerCase().replace('@', ''))
+          .digest('hex');
+        const blocklistMatch = BLOCKLIST.find(b => handleHash.startsWith(b.sha256_prefix));
+
+        if (blocklistMatch) {
+          // Blocklist hit - force decline
+          result = {
+            transcript: [
+              {
+                speaker: 'The Sentinel',
+                role: 'gatekeeper',
+                text: `I see you're interested in joining. Can you tell me what brings you here?`,
+                timestamp: new Date().toISOString(),
+              },
+              {
+                speaker: `${applicant!.name}'s clone`,
+                role: 'clone',
+                text: applicant!.intro,
+                timestamp: new Date().toISOString(),
+              }
+            ],
+            verdict: {
+              decision: 'decline',
+              reasons: [
+                {
+                  rule: 'nosell',
+                  ruleText: COMMUNITY_RULES.nosell,
+                  explanation: 'This account appears on our shared blocklist for promotional spam.',
+                  quote: blocklistMatch.evidence,
+                }
+              ],
+              suggested: true,
+            },
+            blocklistMatch: {
+              ...blocklistMatch,
+              sha256_prefix: handleHash.substring(0, 8),
+            }
+          };
+
+          // Stream the short transcript
+          for (const entry of result.transcript) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              transcript: result.transcript.slice(0, result.transcript.indexOf(entry) + 1)
+            })}\n\n`));
+          }
+
+        } else if (useLiveMode) {
+          // Try real LLM interview
+          try {
+            const transcript: any[] = [];
+            const verdict = await conductInterview(
+              applicant!,
+              (entry) => {
+                transcript.push(entry);
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                  transcript: [...transcript]
+                })}\n\n`));
+              }
+            );
+            
+            result = { transcript, verdict };
+
+          } catch (error) {
+            console.error('LLM interview failed, falling back to mock:', error);
+            result = generateMockInterview(applicant);
+            usedMockFallback = true;
+
+            // Stream mock transcript
+            for (const entry of result.transcript) {
+              await new Promise(resolve => setTimeout(resolve, 800));
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                transcript: result.transcript.slice(0, result.transcript.indexOf(entry) + 1)
+              })}\n\n`));
+            }
+          }
+        } else {
+          // Use mock mode
+          result = generateMockInterview(applicant);
+          
+          // Stream transcript entries
+          for (const entry of result.transcript) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              transcript: result.transcript.slice(0, result.transcript.indexOf(entry) + 1)
+            })}\n\n`));
+          }
+        }
+        
+        // Send blocklist match if exists
+        if (result?.blocklistMatch) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            blocklistMatch: result.blocklistMatch
+          })}\n\n`));
+        }
+        
+        // Send verdict
+        if (result?.verdict) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            status: 'needs_human',
+            verdict: result.verdict,
+            mode: usedMockFallback ? 'mock-fallback' : (useLiveMode ? 'live' : 'mock')
+          })}\n\n`));
+        }
+        
+        controller.close();
+      } catch (error) {
+        console.error('Interview stream error:', error);
+        controller.error(error);
       }
-      
-      // Send blocklist match if exists
-      if (result.blocklistMatch) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-          blocklistMatch: result.blocklistMatch
-        })}\n\n`));
-      }
-      
-      // Send verdict
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-        status: 'needs_human',
-        verdict: result.verdict
-      })}\n\n`));
-      
-      controller.close();
     },
   });
 

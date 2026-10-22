@@ -13,6 +13,7 @@ export default function Home() {
   const [intro, setIntro] = useState('');
   const [isRunning, setIsRunning] = useState(false);
   const [confirmed, setConfirmed] = useState(0);
+  const [mode, setMode] = useState<'live' | 'mock' | null>(null);
 
   const handleAddApplicant = async () => {
     if (!githubHandle && !intro) return;
@@ -24,6 +25,19 @@ export default function Home() {
       intro: intro,
       status: 'arriving',
     };
+
+    // Try to fetch live GitHub data
+    if (githubHandle) {
+      try {
+        const response = await fetch(`/api/github?handle=${githubHandle}`);
+        if (response.ok) {
+          const githubData = await response.json();
+          newApplicant.githubData = githubData;
+        }
+      } catch (error) {
+        console.error('Failed to fetch GitHub data:', error);
+      }
+    }
     
     setApplicants([...applicants, newApplicant]);
     setGithubHandle('');
@@ -74,6 +88,10 @@ export default function Home() {
             
             setApplicants(prev => prev.map(a => {
               if (a.id === applicantId) {
+                // Track mode
+                if (data.mode && !mode) {
+                  setMode(data.mode === 'live' ? 'live' : 'mock');
+                }
                 return { ...a, ...data };
               }
               return a;
@@ -131,14 +149,30 @@ export default function Home() {
         borderBottom: '1px solid var(--line)',
       }}>
         <div style={{ maxWidth: '1600px', margin: '0 auto' }}>
-          <h1 style={{ 
-            fontSize: '28px', 
-            fontWeight: 600,
-            marginBottom: '8px',
-            color: 'var(--ink)'
-          }}>
-            The Gate
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
+            <h1 style={{ 
+              fontSize: '28px', 
+              fontWeight: 600,
+              color: 'var(--ink)'
+            }}>
+              The Gate
+            </h1>
+            {mode && (
+              <div style={{
+                padding: '4px 10px',
+                background: mode === 'live' ? 'rgba(94, 230, 160, 0.15)' : 'rgba(255, 196, 94, 0.15)',
+                border: `1px solid ${mode === 'live' ? 'var(--accept)' : 'var(--ask)'}`,
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 600,
+                color: mode === 'live' ? 'var(--accept)' : 'var(--ask)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+              }}>
+                {mode === 'live' ? '● Live (Grok)' : '○ Mock Mode'}
+              </div>
+            )}
+          </div>
           <p style={{ 
             color: 'var(--mute)', 
             marginBottom: '24px',
