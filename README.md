@@ -1,127 +1,212 @@
-# Event Autopilot
+# The Gate
 
-**Turn one event into everything you need, in your community's voice.**
+**Every applicant gets a fair one-to-one with your community's values. A human makes the call.**
 
-Event Autopilot generates run sheets, budgets, volunteer rotas, event copy, newsletters, social posts, and on-brand visuals from a single event idea or Luma URL. Built for the Grok Bot Community Engineering London Hackathon.
+The Gate is an AI-powered community gatekeeper that vets applicants through simulated one-to-one conversations. Built for the Grok Bot Community Engineering London Hackathon.
 
-## 🎯 The Problem
+## The Problem
 
-Community leads spend hours on repetitive event planning: creating run sheets, writing posts for different platforms, designing graphics, and managing budgets. The same event needs different messaging for different communities (technical founders vs. non-engineers vs. students).
+Community organizers face a dilemma:
+- **Open doors** → spam, scammers, and bad actors slip through
+- **Strict vetting** → legitimate newcomers get blocked, especially beginners
+- **Manual screening** → doesn't scale, inconsistent, time-consuming
 
-## ✨ The Solution
+Traditional keyword filters miss context. A "recruiter" might be someone genuinely offering value, or a spammer. You can't tell from a form.
 
-**Event Autopilot** does the repetitive work in seconds:
-- **Input**: One-line event idea OR Luma event URL + notes
-- **Output**: Complete event package with run sheet, budget, volunteer rota, event page copy, newsletter draft, platform-specific posts (WhatsApp, LinkedIn, Discord), and downloadable event graphic
-- **Voice Profiles**: The same event, rewritten for your community's tone, vocabulary, and channels
-- **One-Click Approval**: Review board with hours-saved counter, approve/edit/regenerate per asset
+## The Solution
 
-## 🚀 Demo Flow
+**The Gate** creates digital clones of applicants from minimal seed data (GitHub + one-line intro) and interviews them using gatekeeper personas that embody your community's values. Each gatekeeper asks probing follow-up questions to separate genuine fit from keyword matching.
 
-1. **Input** → Enter event idea or paste Luma URL, add notes (venue, budget, volunteers)
-2. **Select Voice** → Choose from 3 example profiles (hacker/founder, AI builders, university entrepreneurship)
-3. **Generate** → Get all assets in 5-10 seconds with streaming progress
-4. **Review** → Side-by-side comparison, channel-specific previews, approve/edit/regenerate
-5. **Export** → Download graphic, see hours saved counter (285 minutes total if all approved)
+### Why simulate a conversation instead of scoring answers?
 
-## 📦 What's Included
+**Follow-ups separate real fit from gaming the system.**
 
-- **Run Sheet**: Timed agenda with owners and durations
-- **Budget**: Itemized costs with total
-- **Volunteer Rota**: Roles, assignments, time slots
-- **Event Page Copy**: 2-3 paragraphs in your community's voice
-- **Newsletter Draft**: Ready-to-send community update
-- **Social Posts**: Platform-optimized for WhatsApp, LinkedIn, Discord
-- **Event Graphic**: HTML/SVG-based design exported to PNG (1200x630)
-- **Hours Saved**: Live counter showing manual time vs. automated (285 min total)
+- A keyword filter sees "I build things" and "token presale 100x" as equal strings
+- A conversation reveals intent: "What kind of things?" → genuine builder vs. promoter
+- The transcript becomes the explanation: you see *why* someone was accepted or declined
+- Borderline cases get flagged for human judgment ("ask more")
 
-## 🎨 Voice Profiles
+### Key Features
 
-Each profile represents a community's unique voice:
+1. **Digital Clones** - Built only from real seed data (GitHub profile + intro). Told to say "I don't know" rather than invent.
 
-1. **Hacker/Founder Community**
-   - Direct, action-oriented, no BS
-   - Vocabulary: ship, iterate, MVP, traction, PMF
-   - Example: "🚀 Ship Mode: Building [X] this weekend. Demo at 7pm."
+2. **Gatekeeper Personas** - Written from your community rules:
+   - The Builder (checks: "You build things")
+   - The Host (checks: "You'll give as much as you take" + "Be kind")
+   - The Sentinel (checks: "No selling without permission")
 
-2. **Non-Engineers Building with AI**
-   - Encouraging, jargon-free, practical
-   - Vocabulary: automate, workflow, no-code, experiment
-   - Example: "✨ Build your first AI workflow (no coding required)."
+3. **Parallel Interviews** - All applicants interviewed simultaneously, visible as animated dots on the field
 
-3. **University Entrepreneurship Society**
-   - Energetic, inclusive, low-barrier
-   - Vocabulary: network, career, learn, opportunity
-   - Example: "🎓 Ever wondered how to start a company at uni? Join us Thursday."
+4. **Shared Blocklist** - Known bad actors (stored as SHA-256 hashes) auto-declined with evidence
 
-## 🛠️ Tech Stack
+5. **Human Confirms Everything** - Suggested verdicts require human approval. Nothing is final until someone presses Accept/Ask/Decline.
+
+6. **Transparent Reasons** - Every verdict shows:
+   - Which community rule applies
+   - Why that rule matters here
+   - Direct quote from the transcript
+
+## How It Works
+
+```
+Applicant arrives
+  → Digital clone created from GitHub + intro
+  → 3 gatekeepers interview in parallel (3-4 turns each)
+  → Judge reviews transcript
+  → Verdict: Accept / Ask more / Decline
+  → Human confirms or overrides
+  → Members or Turned away
+```
+
+## Demo
+
+### Sample Applicants (Fictional Test Data)
+
+The app includes 5 fictional test cases with expected verdicts:
+
+1. **Priya** (@priya-builds)
+   - ML engineer, 41 repos, offers to run a session
+   - Expected: **Accept** (builds things, gives back)
+
+2. **Tom** (@tom-first-hack)
+   - First-year student, 2 repos, first hackathon
+   - Expected: **Ask** (beginner, but beginners are welcome)
+
+3. **CryptoKing** (@CryptoKing_88)
+   - "Token presale 100x DM me", 0 repos, 2-day-old account
+   - Expected: **Decline** (blocklist match + promotional spam)
+
+4. **Dan** (@dan-talent)
+   - Technical recruiter offering pizza/CV night, 0 repos
+   - Expected: **Ask** (recruiting needs permission, verify intent)
+
+5. **Aisha** (@aisha-designs)
+   - Designer who codes, 18 repos, offers design feedback
+   - Expected: **Accept** (builds things, gives back)
+
+## Tech Stack
 
 - **Framework**: Next.js 15 (App Router) + TypeScript
-- **Styling**: Tailwind CSS + shadcn/ui components
-- **Animations**: Framer Motion
-- **Fonts**: Geist Sans & Mono
-- **LLM**: xAI Grok API (OpenAI-compatible) with provider abstraction
-- **Image Generation**: @vercel/og (Satori) for HTML/SVG → PNG
-- **Storage**: Local JSON (no database required)
-- **Mock Mode**: High-quality canned responses when no API key is set
+- **Styling**: Custom CSS with design tokens (Space Grotesk + JetBrains Mono fonts)
+- **LLM**: xAI Grok API (OpenAI-compatible) for interviews
+- **GitHub API**: Live profile data (optional GITHUB_TOKEN for higher rate limits)
+- **Memory**: Cognee (optional, for grounding prompts with community context)
+- **Streaming**: Server-Sent Events (SSE) for live transcript updates
 
-## 🏃 Quick Start
+## Quick Start
 
 ```bash
 # Install dependencies
 npm install
 
-# Run in mock mode (no API key needed)
+# Run in mock mode (no API keys needed)
 npm run dev
 
 # Open http://localhost:3000
 ```
 
-The app works out of the box in **mock mode** with realistic generated content. Perfect for demos!
+The app works immediately with **high-quality mock interviews** for the 5 sample applicants.
 
-### With API Key (Optional)
+### With API Keys (Optional)
 
 ```bash
 # Copy environment template
 cp .env.example .env
 
-# Add your API key (choose one)
-# Option 1: xAI Grok (recommended)
-XAI_API_KEY=your_xai_api_key_here
-
-# Option 2: OpenAI
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Run dev server
-npm run dev
+# Add your keys
+XAI_API_KEY=your_xai_key          # For real LLM interviews
+GITHUB_TOKEN=your_github_token     # For live GitHub data (optional)
+COGNEE_ENABLED=false               # Memory layer (optional)
 ```
 
-Get a Grok API key: https://console.x.ai/
+## Safety & Ethics
 
-## 📖 How to Add Your Community's Voice Profile
+**This tool is designed with strong safety guardrails:**
 
-Voice profiles are defined in `lib/voice-profiles.ts`. Add a new profile:
+1. **No clones without consent** - Only works with opt-in GitHub handles
+2. **Human always decides** - AI suggests, human confirms every verdict
+3. **Borderline → Ask** - When uncertain, flag for human judgment
+4. **Never auto-decline real people** - Every decline requires human approval
+5. **Blocklist hashed** - Handles stored as SHA-256, not plaintext
+6. **Transparent reasons** - Every verdict quotes the transcript
+
+**Important**: This tool is for initial vetting only. It complements, doesn't replace, human judgment.
+
+## For Your Community
+
+### Customize Rules
+
+Edit `lib/config.ts`:
 
 ```typescript
-{
-  id: "your-community",
-  name: "Your Community Name",
-  description: "One-line description",
-  tone: "Describe the tone: friendly, professional, technical, casual, etc.",
-  vocabulary: ["key", "words", "your", "community", "uses"],
-  analogies: ["Like X meets Y", "Think of it as..."],
-  channels: ["WhatsApp", "LinkedIn", "Discord", "Twitter", "Slack"],
-  examplePosts: [
-    "Example 1: Short sample post in your voice",
-    "Example 2: Another sample showing your style",
-    "Example 3: One more for variety"
-  ]
-}
+export const COMMUNITY_RULES: CommunityRules = {
+  build: 'You build things. Code, design, hardware, research all count.',
+  give: "You'll give as much as you take.",
+  nosell: 'No selling, recruiting or promoting without asking first.',
+  kind: 'Be kind and curious. Beginners are welcome.',
+  // Add your own rules here
+};
 ```
 
-The more specific your tone/vocabulary/examples, the better the AI matches your voice.
+### Customize Gatekeepers
 
-## 🧪 Build & Deploy
+```typescript
+export const GATEKEEPERS: Gatekeeper[] = [
+  { name: 'The Builder', rules: ['build'] },
+  { name: 'The Host', rules: ['give', 'kind'] },
+  { name: 'The Sentinel', rules: ['nosell'] },
+  // Add or modify gatekeepers
+];
+```
+
+### Add to Blocklist
+
+```typescript
+export const BLOCKLIST = [
+  {
+    handle: 'spammer_handle',  // lowercase, no @
+    reported_by: 'Your Community',
+    confirmed: true,
+    evidence: 'Specific bad behavior with dates',
+    sha256_prefix: 'abc123...',  // First 8 chars of SHA-256
+  }
+];
+```
+
+Generate SHA-256: `echo -n "handle" | sha256sum`
+
+## Architecture
+
+```
+┌─────────────────┐
+│  Next.js App    │
+│  (TypeScript)   │
+└────────┬────────┘
+         │
+         ├─→ /api/interview (SSE streaming)
+         │   - Creates clone from seed data
+         │   - Runs 3 gatekeeper interviews
+         │   - Returns transcript + verdict
+         │
+         ├─→ /api/github
+         │   - Fetches live GitHub data
+         │   - Caches for 1 hour
+         │
+         └─→ Field UI
+             - Animated dots between zones
+             - Real-time transcript streaming
+             - Person panel with verdict
+```
+
+### Mock Mode
+
+When no API keys are set, the app uses **scripted high-quality interviews**:
+- Realistic conversation flow (3-4 turns per gatekeeper)
+- Accurate verdicts based on test cases
+- Proper reasoning with quoted evidence
+- Perfect for demos and testing
+
+## Build & Deploy
 
 ```bash
 # Verify build passes
@@ -138,21 +223,20 @@ vercel
 
 Or any Node.js host (Render, Railway, Fly.io, etc.)
 
-## 🎯 Judging Criteria Alignment
+## What's Left (Post-Hackathon)
 
-- **Weekly Work Automated**: 285 minutes (4.75 hours) per event
-- **Copy & Visuals Quality**: Voice-matched copy + downloadable PNG graphic
-- **Volunteer Hours Saved**: Live counter prominently shown
-- **Community Lead Trust**: Professional UI, review/edit/regenerate controls
-- **Community Context**: 3 voice profiles, learns from example posts
-- **Open Source & Reusable**: MIT license, easy to add voice profiles
-- **Demo Quality**: Polished dark UI, smooth animations, one-click sample event
+- [ ] **Cognee integration** - Memory layer for community context (15-min time limit reached, shipped without it)
+- [ ] Real LLM interview flow (mock mode fully functional)
+- [ ] Batch processing for large applicant lists
+- [ ] Export transcripts and verdicts
+- [ ] Analytics dashboard (accept/decline rates over time)
+- [ ] Multi-community shared blocklist network
 
-## 📸 Screenshots
+## License
 
-[Screenshots will be added after running the app]
+MIT License - see [LICENSE](LICENSE) file
 
-## 🤝 Contributing
+## Contributing
 
 This is an open-source hackathon project. Contributions welcome!
 
@@ -161,16 +245,12 @@ This is an open-source hackathon project. Contributions welcome!
 3. Make your changes
 4. Submit a pull request
 
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🏆 Built For
+## Built For
 
 Grok Bot Community Engineering London Hackathon
-Track: Event Autopilot
+**Track 1: Gatekeeper**
 Date: October 22, 2026
 
 ---
 
-Made with ⚡ by the Event Autopilot team
+Made with ⚡ in 75 minutes
